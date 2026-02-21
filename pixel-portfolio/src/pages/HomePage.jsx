@@ -1,30 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import "../HomePage.css";
 
 const HomePage = () => {
-  // Face state machine
+  const navigate = useNavigate();
   const [faceState, setFaceState] = useState("idle");
   const [blinking, setBlinking] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [hoveredButton, setHoveredButton] = useState(null);
-  const [isClicking, setIsClicking] = useState(false);
   const [clickCount, setClickCount] = useState(0);
-  const [isTabActive, setIsTabActive] = useState(true);
-  const [scrollPos, setScrollPos] = useState(0);
   const [inputText, setInputText] = useState("");
-  const [showEasterEgg, setShowEasterEgg] = useState(false);
 
-  // Refs
   const faceContainerRef = useRef(null);
   const blinkTimeoutRef = useRef(null);
   const idleTimeoutRef = useRef(null);
   const audioContextRef = useRef(null);
 
-  // Initialize audio context
+  // Initialize audio
   useEffect(() => {
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext ||
-        window.webkitAudioContext)();
+      try {
+        audioContextRef.current = new (window.AudioContext ||
+          window.webkitAudioContext)();
+      } catch (e) {
+        console.warn("Audio failed:", e);
+      }
     }
   }, []);
 
@@ -47,7 +47,6 @@ const HomePage = () => {
   // Tab visibility
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsTabActive(!document.hidden);
       if (!document.hidden) {
         setFaceState("wakeup");
         setTimeout(() => setFaceState("idle"), 800);
@@ -70,16 +69,16 @@ const HomePage = () => {
       const centerY = rect.top + rect.height / 2;
 
       const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-      const distance = 8; // Max eye movement
+      const distance = 8;
 
       setMousePos({
         x: Math.cos(angle) * distance,
         y: Math.sin(angle) * distance,
       });
 
-      // Update face state based on mouse position
       if (faceState === "idle" || faceState === "looking") {
         setFaceState("looking");
+        clearTimeout(idleTimeoutRef.current);
         idleTimeoutRef.current = setTimeout(() => setFaceState("idle"), 2000);
       }
     };
@@ -88,52 +87,37 @@ const HomePage = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [faceState]);
 
-  // Scroll tracking
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollPos(window.scrollY);
-      if (window.scrollY > 100) {
-        setFaceState("scrolling");
-      } else {
-        setFaceState("idle");
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   // Sound effects
   const playSound = (type) => {
     if (!audioContextRef.current) return;
     const ctx = audioContextRef.current;
     const now = ctx.currentTime;
 
-    switch (type) {
-      case "hover":
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.frequency.value = 800;
-        gain1.gain.setValueAtTime(0.1, now);
-        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.1);
-        break;
-      case "click":
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.frequency.setValueAtTime(1200, now);
-        osc2.frequency.exponentialRampToValueAtTime(400, now + 0.15);
-        gain2.gain.setValueAtTime(0.15, now);
-        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.start(now);
-        osc2.stop(now + 0.15);
-        break;
-      default:
-        break;
+    try {
+      if (type === "hover") {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === "click") {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.setValueAtTime(1200, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+    } catch (e) {
+      console.warn("Sound error:", e);
     }
   };
 
@@ -146,7 +130,7 @@ const HomePage = () => {
       about: "curious",
       work: "determined",
       contact: "happy",
-      resume: "excited",
+      games: "excited",
     };
     setFaceState(states[buttonName] || "idle");
   };
@@ -163,10 +147,8 @@ const HomePage = () => {
 
     if (clickCount + 1 === 10) {
       setFaceState("broken");
-      setShowEasterEgg(true);
       setTimeout(() => {
         setFaceState("idle");
-        setShowEasterEgg(false);
         setClickCount(0);
       }, 2000);
     } else {
@@ -194,12 +176,11 @@ const HomePage = () => {
 
   // Get face expression SVG
   const FaceExpression = ({ state, blinking, mousePos }) => {
-    const eyeOffset = blinking ? 0 : mousePos;
+    const eyeOffset = blinking ? { x: 0, y: 0 } : mousePos;
 
     const expressions = {
       idle: (
         <svg viewBox="0 0 64 64" className="face-svg">
-          {/* Head */}
           <rect
             x="8"
             y="8"
@@ -209,8 +190,6 @@ const HomePage = () => {
             stroke="#8B4513"
             strokeWidth="2"
           />
-
-          {/* Eyes */}
           <rect
             x="20"
             y="20"
@@ -229,8 +208,6 @@ const HomePage = () => {
             stroke="#000"
             strokeWidth="1"
           />
-
-          {/* Pupils */}
           <rect
             x={24 + eyeOffset.x}
             y={23 + eyeOffset.y}
@@ -245,8 +222,6 @@ const HomePage = () => {
             height="3"
             fill="#000"
           />
-
-          {/* Mouth - neutral smile */}
           <line x1="20" y1="42" x2="44" y2="42" stroke="#000" strokeWidth="2" />
           <line x1="44" y1="42" x2="44" y2="44" stroke="#000" strokeWidth="2" />
         </svg>
@@ -369,7 +344,6 @@ const HomePage = () => {
           />
           <circle cx="24" cy="24" r="4" fill="#000" />
           <circle cx="40" cy="24" r="4" fill="#000" />
-          {/* Rosy cheeks */}
           <circle cx="14" cy="38" r="3" fill="#FFB6C1" opacity="0.6" />
           <circle cx="50" cy="38" r="3" fill="#FFB6C1" opacity="0.6" />
           <polyline
@@ -472,7 +446,6 @@ const HomePage = () => {
             stroke="#000"
             strokeWidth="2"
           />
-          {/* Waving hand */}
           <rect
             x="48"
             y="12"
@@ -508,7 +481,7 @@ const HomePage = () => {
           <line x1="24" y1="44" x2="40" y2="44" stroke="#000" strokeWidth="2" />
         </svg>
       ),
-      scrolling: (
+      broken: (
         <svg viewBox="0 0 64 64" className="face-svg">
           <rect
             x="8"
@@ -519,9 +492,11 @@ const HomePage = () => {
             stroke="#8B4513"
             strokeWidth="2"
           />
-          <circle cx="24" cy="20" r="4" fill="#000" />
-          <circle cx="40" cy="28" r="4" fill="#000" />
-          <line x1="24" y1="40" x2="40" y2="46" stroke="#000" strokeWidth="2" />
+          <line x1="20" y1="20" x2="28" y2="28" stroke="#000" strokeWidth="2" />
+          <line x1="28" y1="20" x2="20" y2="28" stroke="#000" strokeWidth="2" />
+          <line x1="36" y1="20" x2="44" y2="28" stroke="#000" strokeWidth="2" />
+          <line x1="44" y1="20" x2="36" y2="28" stroke="#000" strokeWidth="2" />
+          <line x1="20" y1="42" x2="44" y2="46" stroke="#000" strokeWidth="2" />
         </svg>
       ),
       sleep: (
@@ -543,12 +518,8 @@ const HomePage = () => {
             stroke="#000"
             strokeWidth="2"
           />
-          {/* Z's */}
           <text x="48" y="16" fontSize="12" fill="#000">
             Z
-          </text>
-          <text x="54" y="10" fontSize="10" fill="#000">
-            z
           </text>
         </svg>
       ),
@@ -589,24 +560,6 @@ const HomePage = () => {
           />
         </svg>
       ),
-      broken: (
-        <svg viewBox="0 0 64 64" className="face-svg">
-          <rect
-            x="8"
-            y="8"
-            width="48"
-            height="48"
-            fill="#FFD1A3"
-            stroke="#8B4513"
-            strokeWidth="2"
-          />
-          <line x1="20" y1="20" x2="28" y2="28" stroke="#000" strokeWidth="2" />
-          <line x1="28" y1="20" x2="20" y2="28" stroke="#000" strokeWidth="2" />
-          <line x1="36" y1="20" x2="44" y2="28" stroke="#000" strokeWidth="2" />
-          <line x1="44" y1="20" x2="36" y2="28" stroke="#000" strokeWidth="2" />
-          <line x1="20" y1="42" x2="44" y2="46" stroke="#000" strokeWidth="2" />
-        </svg>
-      ),
     };
 
     return expressions[state] || expressions.idle;
@@ -614,10 +567,8 @@ const HomePage = () => {
 
   return (
     <div className="home-page">
-      {/* Background */}
       <div className="pixel-bg" />
 
-      {/* Main Content */}
       <div className="container">
         {/* Face Section */}
         <div className="face-section">
@@ -625,6 +576,7 @@ const HomePage = () => {
             ref={faceContainerRef}
             className={`face-container ${faceState} ${blinking ? "blinking" : ""}`}
             onClick={handleFaceClick}
+            title="Click me!"
             style={{
               "--shadow-offset-x": `${mousePos.x}px`,
               "--shadow-offset-y": `${mousePos.y}px`,
@@ -635,7 +587,6 @@ const HomePage = () => {
               blinking={blinking}
               mousePos={blinking ? { x: 0, y: 0 } : mousePos}
             />
-            {showEasterEgg && <div className="particle-burst" />}
           </div>
 
           {/* Text Bubble */}
@@ -646,15 +597,14 @@ const HomePage = () => {
               {faceState === "curious" && "What brings you here?"}
               {faceState === "determined" && "Let's see what I built!"}
               {faceState === "happy" && "Get in touch! 💌"}
-              {faceState === "excited" && "Resume incoming!"}
+              {faceState === "excited" && "Let's play games!"}
               {faceState === "waving" && "Hey there! 👋"}
               {faceState === "angry" && "RAAAAWR! 😤"}
               {faceState === "surprised" && "Ouch!"}
-              {faceState === "scrolling" && "Whoa, slow down!"}
+              {faceState === "looking" && "I see you..."}
+              {faceState === "broken" && "System error! ...jk"}
               {faceState === "sleep" && "Zzz..."}
               {faceState === "wakeup" && "Oh, welcome back!"}
-              {faceState === "broken" && "System error! ...jk"}
-              {faceState === "looking" && "I see you..."}
               {faceState === "idle" && "Click me!"}
             </div>
             <div className="bubble-tail" />
@@ -674,31 +624,35 @@ const HomePage = () => {
           {[
             { name: "about", label: "📖 About" },
             { name: "work", label: "🎨 Work" },
+            { name: "games", label: "🎮 Games", navigate: "/games" },
             { name: "contact", label: "💬 Contact" },
-            { name: "resume", label: "📄 Resume" },
           ].map((btn) => (
             <button
               key={btn.name}
               className={`pixel-button ${hoveredButton === btn.name ? "hovered" : ""}`}
               onMouseEnter={() => handleButtonHover(btn.name)}
               onMouseLeave={handleButtonLeave}
-              onClick={() => playSound("click")}
+              onClick={() => {
+                playSound("click");
+                if (btn.navigate) {
+                  navigate(btn.navigate);
+                }
+              }}
             >
               {btn.label}
             </button>
           ))}
         </div>
 
-        {/* Easter Egg Input */}
-        <div className="easter-egg-input">
-          <input
-            type="text"
-            placeholder="Try typing 'hello' or 'angry'..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            className="hidden-input"
-          />
-        </div>
+        {/* Easter Egg Input - Hidden */}
+        <input
+          type="text"
+          placeholder="Type for easter eggs"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          style={{ display: "none" }}
+          autoFocus
+        />
       </div>
     </div>
   );

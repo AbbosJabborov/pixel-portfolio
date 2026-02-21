@@ -1,10 +1,16 @@
-/* Pixel font import - using Press Start 2P */
 @import "@fontsource/press-start-2p";
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
 }
 
 body {
@@ -14,7 +20,6 @@ body {
     overflow-x: hidden;
 }
 
-/* Image rendering to keep pixels crisp */
 img,
 canvas,
 svg {
@@ -36,7 +41,7 @@ svg {
 
 /* Pixel background grid */
 .pixel-bg {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
@@ -68,7 +73,7 @@ svg {
         );
     background-size: 50px 50px;
     pointer-events: none;
-    z-index: 1;
+    z-index: 0;
     animation: pixelDrift 20s linear infinite;
 }
 
@@ -122,7 +127,6 @@ svg {
     }
 }
 
-/* Face states */
 .face-container.curious {
     animation: faceNod 0.6s ease-in-out;
 }
@@ -201,19 +205,6 @@ svg {
     }
 }
 
-.face-container.scrolling {
-    animation: faceDizzy 0.8s linear infinite;
-}
-
-@keyframes faceDizzy {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
 .face-container.waving {
     animation: faceWave 0.6s ease-in-out 3;
 }
@@ -283,26 +274,6 @@ svg {
     }
 }
 
-.particle-burst {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    animation: burst 0.6s ease-out forwards;
-}
-
-@keyframes burst {
-    0% {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(0.5);
-    }
-    100% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(2);
-    }
-}
-
 /* Text Bubble */
 .text-bubble {
     opacity: 0;
@@ -310,6 +281,8 @@ svg {
     transition: all 0.3s ease;
     pointer-events: none;
     max-width: 280px;
+    position: relative;
+    height: 80px;
 }
 
 .text-bubble.active {
@@ -327,6 +300,10 @@ svg {
     text-align: center;
     box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.15);
     word-wrap: break-word;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .bubble-tail {
@@ -457,21 +434,6 @@ svg {
     }
 }
 
-/* Easter Egg Input */
-.easter-egg-input {
-    position: fixed;
-    top: -9999px;
-    left: -9999px;
-}
-
-.hidden-input {
-    position: absolute;
-    top: -9999px;
-    left: -9999px;
-    opacity: 0;
-    pointer-events: none;
-}
-
 /* Responsive Design */
 @media (max-width: 600px) {
     .face-container {
@@ -524,7 +486,7 @@ svg {
     }
 }
 
-/* Cursor styling - optional pixel cursor */
+/* Cursor styling */
 body {
     cursor:
         url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect x="0" y="0" width="4" height="4" fill="black"/><rect x="4" y="0" width="4" height="4" fill="black"/><rect x="8" y="0" width="4" height="4" fill="black"/><rect x="0" y="4" width="4" height="4" fill="black"/><rect x="8" y="4" width="4" height="4" fill="black"/><rect x="0" y="8" width="4" height="4" fill="black"/><rect x="4" y="8" width="4" height="4" fill="black"/><rect x="8" y="8" width="4" height="4" fill="black"/></svg>')
@@ -539,24 +501,9 @@ body {
         pointer;
 }
 
-/* Dark mode support (optional for later) */
-@media (prefers-color-scheme: dark) {
-    .home-page {
-        background: linear-gradient(135deg, #2a2a2a 0%, #3a2a3a 100%);
-    }
-
-    .bubble-content {
-        background: #1a1a1a;
-        border-color: #fff;
-        color: #fff;
-    }
-
-    .bubble-tail {
-        background: #1a1a1a;
-        border-color: #fff;
-    }
-
-    .subtitle {
-        color: #aaa;
-    }
+.face-container {
+    cursor:
+        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="8" cy="8" r="6" fill="none" stroke="black" stroke-width="1"/><circle cx="8" cy="8" r="2" fill="black"/></svg>')
+            8 8,
+        pointer;
 }
